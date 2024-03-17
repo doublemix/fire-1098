@@ -2,9 +2,7 @@
   "name": "fire-1098",
   "version": "1.0.0",
   "description": "",
-  "main": "form1098.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
