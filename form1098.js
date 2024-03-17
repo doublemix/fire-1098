@@ -1,0 +1,535 @@
+const fs = require("fs");
+const CSV = require('csv-string');
+
+// file with hard-coded sensitive data, not committed so project won't work, TODO remove reference
+const sageData = require("./transmitter-data");
+
+const TRecord = [
+  { type: "const", value: "T" },
+  { type: "string", field: "paymentYear", width: 4 },
+  { type: "bool", field: "priorYearIndicator", trueValue: "T", width: 1 },
+  { type: "string", field: "transmitterTin", width: 9 },
+  { type: "string", field: "transmitterControlCode", width: 5 },
+  { type: "blank", width: 7 },
+  { type: "bool", field: "testFileIndicator", trueValue: "T", width: 1 },
+  { type: "bool", field: "foreignEntityIndicator", trueValue: "1", width: 1 },
+  { type: "string", field: "transmitterName", width: 40 },
+  { type: "string", field: "transmitterName2", width: 40 },
+  { type: "string", field: "companyName", width: 40 },
+  { type: "string", field: "companyName2", width: 40 },
+  { type: "string", field: "companyMailingAddress", width: 40 },
+  { type: "string", field: "companyCity", width: 40 },
+  { type: "string", field: "companyState", width: 2 },
+  { type: "string", field: "companyZipCode", width: 9 },
+  { type: "blank", width: 15 },
+  {
+    type: "string",
+    field: "totalNumberOfPayees",
+    width: 8,
+    pad: "0",
+    align: "right",
+  },
+  { type: "string", field: "contactName", width: 40 },
+  { type: "string", field: "contactTelephone", width: 15 },
+  { type: "string", field: "contactEmail", width: 50 },
+  { type: "blank", width: 91 },
+  { type: "recordSequenceNumber", width: 8 },
+  { type: "blank", width: 10 },
+  { type: "string", field: "vendorIndicator", width: 1 },
+  { type: "string", field: "vendorName", width: 40 },
+  { type: "string", field: "vendorMailingAddress", width: 40 },
+  { type: "string", field: "vendorCity", width: 40 },
+  { type: "string", field: "vendorState", width: 2 },
+  { type: "string", field: "vendorZipCode", width: 9 },
+  { type: "string", field: "vendorContactName", width: 40 },
+  { type: "string", field: "vendorTelephone", width: 15 },
+  { type: "blank", width: 35 },
+  {
+    type: "bool",
+    field: "vendorForeignEntityIndicator",
+    trueValue: "1",
+    width: "1",
+  },
+  { type: "blank", width: 8 },
+  { type: "endOfRecord" },
+];
+
+const ARecord = [
+  { type: "const", value: "A" },
+  { type: "string", field: "paymentYear", width: 4 },
+  {
+    type: "bool",
+    field: "isCombinedFederalStateFilingProgram",
+    trueValue: "1",
+    width: 1,
+  },
+  { type: "blank", width: 5 },
+  { type: "string", field: "issuerTin", width: 9 },
+  { type: "string", field: "issuerNameControl", width: 4 },
+  { type: "bool", field: "lastFilingIndicator", trueValue: "1", width: 1 },
+  { type: "string", field: "typeOfReturn", width: 2 },
+  { type: "string", field: "amountCodes", width: 18 },
+  { type: "blank", width: 6 },
+  { type: "bool", field: "foreignEntityIndicator", trueValue: "1", width: 1 },
+  { type: "string", field: "firstIssuerNameLine", width: 40 },
+  { type: "string", field: "secondIssuerNameLine", width: 40 },
+  {
+    type: "bool",
+    field: "transferAgentIndicator",
+    trueValue: "1",
+    falseValue: "0",
+    width: 1,
+  },
+  { type: "string", field: "issuerShippingAddress", width: 40 },
+  { type: "string", field: "issuerCity", width: 40 },
+  { type: "string", field: "issuerState", width: 2 },
+  { type: "string", field: "issuerZipCode", width: 9 },
+  { type: "string", field: "issuerTelephone", width: 15 },
+  { type: "blank", width: 260 },
+  { type: "recordSequenceNumber", width: 8 },
+  { type: "blank", width: 241 },
+  { type: "endOfRecord" },
+];
+
+const BRecord = [
+  { type: "const", value: "B" },
+  { type: "string", field: "paymentYear", width: 4 },
+  { type: "string", field: "correctedReturnIndicator", width: 1 },
+  { type: "string", field: "nameControl", width: 4 },
+  { type: "string", field: "typeOfTin", width: 1 },
+  { type: "string", field: "payeeTin", width: 9 },
+  { type: "string", field: "payeeAccountNumber", width: 20 },
+  { type: "string", field: "issuerOfficeCode", width: 4 },
+  { type: "blank", width: 10 },
+  {
+    type: "string",
+    field: "paymentAmount1",
+    width: 12,
+    numeric: true,
+    sumIn: "controlAmount1",
+  },
+  {
+    type: "string",
+    field: "paymentAmount2",
+    width: 12,
+    numeric: true,
+    sumIn: "controlAmount2",
+  },
+  {
+    type: "string",
+    field: "paymentAmount3",
+    width: 12,
+    numeric: true,
+    sumIn: "controlAmount3",
+  },
+  {
+    type: "string",
+    field: "paymentAmount4",
+    width: 12,
+    numeric: true,
+    sumIn: "controlAmount4",
+  },
+  {
+    type: "string",
+    field: "paymentAmount5",
+    width: 12,
+    numeric: true,
+    sumIn: "controlAmount5",
+  },
+  {
+    type: "string",
+    field: "paymentAmount6",
+    width: 12,
+    numeric: true,
+    sumIn: "controlAmount6",
+  },
+  {
+    type: "string",
+    field: "paymentAmount7",
+    width: 12,
+    numeric: true,
+    sumIn: "controlAmount7",
+  },
+  {
+    type: "string",
+    field: "paymentAmount8",
+    width: 12,
+    numeric: true,
+    sumIn: "controlAmount8",
+  },
+  {
+    type: "string",
+    field: "paymentAmount9",
+    width: 12,
+    numeric: true,
+    sumIn: "controlAmount9",
+  },
+  {
+    type: "string",
+    field: "paymentAmountA",
+    width: 12,
+    numeric: true,
+    sumIn: "controlAmountA",
+  },
+  {
+    type: "string",
+    field: "paymentAmountB",
+    width: 12,
+    numeric: true,
+    sumIn: "controlAmountB",
+  },
+  {
+    type: "string",
+    field: "paymentAmountC",
+    width: 12,
+    numeric: true,
+    sumIn: "controlAmountC",
+  },
+  {
+    type: "string",
+    field: "paymentAmountD",
+    width: 12,
+    numeric: true,
+    sumIn: "controlAmountD",
+  },
+  {
+    type: "string",
+    field: "paymentAmountE",
+    width: 12,
+    numeric: true,
+    sumIn: "controlAmountE",
+  },
+  {
+    type: "string",
+    field: "paymentAmountF",
+    width: 12,
+    numeric: true,
+    sumIn: "controlAmountF",
+  },
+  {
+    type: "string",
+    field: "paymentAmountG",
+    width: 12,
+    numeric: true,
+    sumIn: "controlAmountG",
+  },
+  {
+    type: "string",
+    field: "paymentAmountH",
+    width: 12,
+    numeric: true,
+    sumIn: "controlAmountH",
+  },
+  {
+    type: "string",
+    field: "paymentAmountJ",
+    width: 12,
+    numeric: true,
+    sumIn: "controlAmountJ",
+  },
+  { type: "blank", width: 16 },
+  { type: "bool", field: "foreignCountryIndicator", trueValue: "1", width: 1 },
+  { type: "string", field: "firstPayeeNameLine", width: 40 },
+  { type: "string", field: "secondPayeeNameLine", width: 40 },
+  { type: "string", field: "payeeMailingAddress", width: 40 },
+  { type: "blank", width: 40 },
+  { type: "string", field: "payeeCity", width: 40 },
+  { type: "string", field: "payeeState", width: 2 },
+  { type: "string", field: "payeeZipCode", width: 9 },
+  { type: "blank", width: 1 },
+  { type: "recordSequenceNumber", width: 8 },
+  { type: "blank", width: 36 },
+  // This is 1098 specific
+  { type: "string", field: "mortgageOriginationDate", width: 8 },
+  {
+    type: "bool",
+    field: "propertySecuringMortgageIndicator",
+    trueValue: "1",
+    width: 1,
+  },
+  { type: "string", field: "propertyAddress", width: 39 },
+  { type: "string", field: "other", width: 39 },
+  { type: "blank", width: 39 },
+  {
+    type: "string",
+    field: "numberOfMortgagedProperties",
+    width: 4,
+    numeric: true,
+  },
+  { type: "string", field: "specialDataEntries", width: 49 },
+  { type: "string", field: "mortgageAcquistionDate", width: 8 },
+  { type: "blank", width: 18 },
+  { type: "endOfRecord" },
+];
+
+const CRecord = [
+  { type: "const", value: "C" },
+  { type: "string", field: "count", width: 8, numeric: true },
+  { type: "blank", width: 6 },
+  { type: "string", field: "controlAmount1", width: 18, numeric: true },
+  { type: "string", field: "controlAmount2", width: 18, numeric: true },
+  { type: "string", field: "controlAmount3", width: 18, numeric: true },
+  { type: "string", field: "controlAmount4", width: 18, numeric: true },
+  { type: "string", field: "controlAmount5", width: 18, numeric: true },
+  { type: "string", field: "controlAmount6", width: 18, numeric: true },
+  { type: "string", field: "controlAmount7", width: 18, numeric: true },
+  { type: "string", field: "controlAmount8", width: 18, numeric: true },
+  { type: "string", field: "controlAmount9", width: 18, numeric: true },
+  { type: "string", field: "controlAmountA", width: 18, numeric: true },
+  { type: "string", field: "controlAmountB", width: 18, numeric: true },
+  { type: "string", field: "controlAmountC", width: 18, numeric: true },
+  { type: "string", field: "controlAmountD", width: 18, numeric: true },
+  { type: "string", field: "controlAmountE", width: 18, numeric: true },
+  { type: "string", field: "controlAmountF", width: 18, numeric: true },
+  { type: "string", field: "controlAmountG", width: 18, numeric: true },
+  { type: "string", field: "controlAmountH", width: 18, numeric: true },
+  { type: "string", field: "controlAmountJ", width: 18, numeric: true },
+  { type: "blank", width: 160 },
+  { type: "recordSequenceNumber", width: 8 },
+  { type: "blank", width: 241 },
+  { type: "endOfRecord" },
+];
+
+// this whole record is a hack
+const FRecord = [
+  { type: "const", value: "F" },
+  { type: "const", value: 1, numeric: true, width: 8 },
+  { type: "blank", pad: "0", width: 21 },
+  { type: "blank", width: 19 },
+  { type: "string", field: "count", numeric: true, width: 8 },
+  { type: "blank", width: 442 },
+  { type: "recordSequenceNumber", width: 8 },
+  { type: "blank", width: 241 },
+  { type: "endOfRecord" },
+];
+
+const Document = [
+  { type: "record", reference: TRecord, field: "transmitter" },
+  { type: "record", reference: ARecord, field: "issuer" },
+  {
+    type: "forEach",
+    field: "payees",
+    do: [{ type: "record", reference: BRecord }],
+  },
+  {
+    type: "record",
+    reference: CRecord,
+    useAggregateRecord: true,
+  },
+  {
+    type: "record",
+    reference: FRecord,
+    useAggregateRecord: true,
+  },
+];
+
+function process(data, documentStructure) {
+  let output = "";
+  let recordSequenceNumber = 0;
+
+  function internalProcess(data, structure, aggregateRecord) {
+    let forEachAggregateRecord;
+    for (const item of structure) {
+      if (item.type === "record") {
+        recordSequenceNumber++;
+        recordSize = 0;
+        internalProcess(
+          item.useAggregateRecord
+            ? forEachAggregateRecord
+            : item.field
+            ? data[item.field]
+            : data,
+          item.reference,
+          aggregateRecord
+        );
+        if (recordSize !== 750) {
+          console.warn("incorrect record size: " + recordSize);
+        }
+        continue;
+      }
+      if (item.type === "forEach") {
+        forEachAggregateRecord = { count: 0 };
+        for (const entity of data[item.field]) {
+          internalProcess(entity, item.do, forEachAggregateRecord);
+          forEachAggregateRecord.count++;
+        }
+        continue;
+      }
+
+      let value;
+      let pad = item.pad;
+      let align = item.align;
+      let width = item.width;
+      let isPresent = true;
+      if (item.type === "const") {
+        value = item.value;
+        width ??= item.value.length;
+      } else if (item.type === "blank") {
+        value = "";
+      } else if (item.type === "string") {
+        isPresent = data[item.field] !== undefined;
+        value = data[item.field] ?? "";
+      } else if (item.type === "bool") {
+        isPresent = data[item.field] !== undefined;
+        value = data[item.field] ? item.trueValue ?? "" : item.falseValue ?? "";
+      } else if (item.type === "recordSequenceNumber") {
+        value = "" + recordSequenceNumber;
+        pad = "0";
+        align = "right";
+      } else if (item.type === "endOfRecord") {
+        value = "\r\n";
+        width = 2;
+      } else {
+        throw new Error("invalid type: " + item.type);
+      }
+
+      width ??= 0;
+
+      if (isPresent && item.numeric) {
+        pad ??= "0";
+        align ??= "right";
+        value = value.toString();
+      } else {
+        pad ??= " ";
+        align ??= "left";
+      }
+
+      if (isPresent && item.sumIn) {
+        aggregateRecord[item.sumIn] ??= 0;
+        aggregateRecord[item.sumIn] += +value;
+      }
+
+      if (value.length < width) {
+        if (pad.length !== 1) throw new Error("invalid padding");
+        if (align === "left") {
+          while (value.length < width) {
+            value += pad;
+          }
+        } else if (align === "right") {
+          const storedValue = value;
+          value = "";
+          while (value.length + storedValue.length < width) {
+            value += pad;
+          }
+          value += storedValue;
+        } else {
+          throw new Error("invalid align");
+        }
+      }
+
+      if (value.length > width) {
+        console.warn("truncated entry: ", value);
+        value = value.substring(0, width);
+      }
+
+      recordSize += value.length;
+      output += value;
+    }
+  }
+
+  internalProcess(data, documentStructure);
+
+  return output;
+}
+
+function readCsv (file) {
+  const fileContents = fs.readFileSync(file, 'ascii')
+
+  const csv = CSV.parse(fileContents)
+
+  const headerRow = csv.shift()
+
+  const resultRows = []
+  for (const row of csv) {
+    const resultRow = {}
+    for (let i = 0; i < headerRow.length; i++) {
+      resultRow[headerRow[i]] = row[i]
+    }
+    resultRows.push(resultRow)
+  }
+  return resultRows
+}
+
+function generateData () {
+  // hard-coded file with sensitive data, not committed, TODO remove reference
+  const rawData = readCsv("03-15-2024 info 1098 2023 with emails.csv");
+
+  const FIRST_NAME = "Borrower First Name";
+  const MIDDLE_NAME = "Borrower Middle Name";
+  const LAST_NAME = "Borrower Last Name";
+  const GENERATION_CODE = "Generation Code";
+  const INTEREST_PAID_1098 = "interest-paid-1098";
+  const YEAREND_2022 = "YE-2022";
+  const SSN = "Borrower SSN";
+  const MAILING_ADDRESS = "Mailing Address"
+  const MAILING_CITY = "Mailing City"
+  const MAILING_STATE = "Mailing State"
+  const MAILING_ZIP_CODE = "Mailing Zipcode"
+  const AGREEMENT_DATE = "Agreement Date"
+
+  const data = {
+    transmitter: sageData.transmitter,
+    issuer: sageData.issuer,
+    payees: rawData
+      .filter(
+        (payee) => payee[INTEREST_PAID_1098].trim().toLowerCase() !== "rent"
+      )
+      .filter(
+        payee => payee[FIRST_NAME]
+      )
+      .map((payee) => {
+        function getPayeeField (fieldName, isRequired) {
+          if (payee[fieldName] == null) {
+            console.log(payee)
+            console.warn("payee missing field " + fieldName)
+            throw new Error()
+          }
+          if (isRequired && payee[fieldName].trim() == "") {
+            console.log(payee)
+            console.warn("payee required field expected to not be empty: " + fieldName)
+          }
+          return payee[fieldName].trim()
+        }
+      
+        function formatNumber (fieldName, isRequired) {
+          const input = getPayeeField(fieldName, isRequired)
+          const value = +(+input * 100).toFixed(0)
+          return value
+        }
+      
+        function formatDate (fieldName, isRequired) {
+          const inputValue = getPayeeField(fieldName, isRequired)
+          const date = new Date(inputValue)
+          try {
+            return date.toISOString().substring(0, 10).replace(/-/g, "")
+          } catch (err) {
+            console.log(payee)
+            throw err
+          }
+        }
+
+        return {
+          paymentYear: "2023",
+          nameControl: getPayeeField(LAST_NAME, true).substring(0, 4).toUpperCase(),
+          typeOfTin: "2",
+          payeeTin: getPayeeField(SSN, true).replace(/-/g, ""),
+          paymentAmount1: formatNumber(INTEREST_PAID_1098, true),
+          paymentAmount6: formatNumber(YEAREND_2022, true),
+          firstPayeeNameLine: `${getPayeeField(FIRST_NAME, true)} ${getPayeeField(MIDDLE_NAME)} ${getPayeeField(LAST_NAME, true)} ${getPayeeField(GENERATION_CODE)}`.replace(/  +/g, " "),
+          payeeMailingAddress: getPayeeField(MAILING_ADDRESS, true),
+          payeeCity: getPayeeField(MAILING_CITY, true),
+          payeeState: getPayeeField(MAILING_STATE, true),
+          payeeZipCode: getPayeeField(MAILING_ZIP_CODE, true),
+          mortgageOriginationDate: formatDate(AGREEMENT_DATE, true),
+        };
+      }),
+  };
+
+  return data
+}
+
+const data = generateData()
+
+const processedData = process(data, Document);
+
+fs.writeFileSync("fire.txt", processedData, "ascii");
