@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Generate FIRE for Form 1098</title>
+    <style>
+      html {
+        font-family: sans-serif;
+      }
+      html,
+      body {
+        height: 100vh;
+        width: 100%;
+        padding: 0;
+        margin: 0;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      #drop-zone {
+        position: relative;
+        height: 100vh;
+        background: #eee;
+        color: #888;
+        font-size: 72px;
+
+        display: flex;
+        flex-flow: row;
+        justify-content: center;
+        align-items: center;
+      }
+      #drop-zone.active * {
+        pointer-events: none;
+      }
+      .active-indicator {
+        display: none;
+        position: absolute;
+        left: 20px;
+        top: 20px;
+        bottom: 20px;
+        right: 20px;
+        border: 10px dashed #888;
+        pointer-events: none;
+      }
+      #drop-zone.active .active-indicator {
+        display: block;
+      }
+      .file-indicators,
+      .submit-button-container {
+        width: 300px;
+      }
+      .file-indicators {
+        display: flex;
+        flex-flow: row nowrap;
+        gap: 20px;
+        font-size: 24px;
+        margin: 30px 0;
+      }
+      .indicator {
+        min-height: 70px;
+        flex: 1;
+        border: 3px solid #666;
+        padding: 15px;
+        border-radius: 5px;
+      }
+      .indicator.uploaded {
+        border-color: green;
+        background: green;
+        color: white;
+      }
+      #submit-button {
+        border: none;
+        border-radius: 5px;
+        padding: 10px;
+        font-size: 32px;
+        text-align: center;
+        width: 100%;
+        background: rgb(99, 99, 255);
+        color: white;
+      }
+      #submit-button:hover {
+        background: rgb(127, 127, 255);
+      }
+      #submit-button:disabled {
+        background: #CCC;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="drop-zone">
+      <div class="active-indicator"></div>
+      <div class="drop-zone-contents">
+        <div>Drop a file</div>
+        <div class="file-indicators">
+          <div class="indicator" id="transmitter-file">Transmitter</div>
+          <div class="indicator" id="data-file">Data</div>
+        </div>
+        <div class="submit-button-container">
+          <button disabled id="submit-button">Submit</button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
