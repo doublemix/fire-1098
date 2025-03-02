@@ -1,16 +1,47 @@
+// Based on Exhibit 1 of Publication 1220
+function processNameControlCandidate(value) {
+  value = value.toUpperCase();
+  value = value.replaceAll(/[^A-Z0-9 -]/g, " ");
+  if (value.startsWith("-") || value.startsWith(" ")) {
+    value = value.value.substring(1);
+  }
+  value = value.substring(0, 4);
+  return value;
+}
+
+function nameControlCorporation(value) {
+  value = value.toUpperCase();
+  let words = value.split(" ");
+  if (words.length >= 3 && words[0] === "THE") {
+    words = words.slice(1);
+  }
+  value = words.join("");
+  return processNameControlCandidate(value);
+}
+
+function nameControlIndividualByLastName(value) {
+  return processNameControlCandidate(value);
+}
+
+// let OPERATION_MAP = {
+//   nameControlCorporation,
+//   nameControlIndividualByLastName,
+// };
+let OPERATION_MAP = {};
+
 const TRecord = [
   { type: "const", value: "T" },
   { type: "string", field: "paymentYear", width: 4 },
-  { type: "bool", field: "priorYearIndicator", trueValue: "T", width: 1 },
-  { type: "string", field: "transmitterTin", width: 9 },
+  { type: "bool", field: "priorYearIndicator", trueValue: "P", width: 1 },
+  { type: "string", field: "transmitterTin", pad: "", width: 9 },
   { type: "string", field: "transmitterControlCode", width: 5 },
   { type: "blank", width: 7 },
   { type: "bool", field: "testFileIndicator", trueValue: "T", width: 1 },
   { type: "bool", field: "foreignEntityIndicator", trueValue: "1", width: 1 },
   { type: "string", field: "transmitterName", width: 40 },
-  { type: "string", field: "transmitterName2", width: 40 },
+  { type: "string", continuedFrom: "transmitterName", width: 40 },
   { type: "string", field: "companyName", width: 40 },
-  { type: "string", field: "companyName2", width: 40 },
+  { type: "string", continuedFrom: "companyName", width: 40 },
   { type: "string", field: "companyMailingAddress", width: 40 },
   { type: "string", field: "companyCity", width: 40 },
   { type: "string", field: "companyState", width: 2 },
@@ -25,7 +56,7 @@ const TRecord = [
   },
   { type: "string", field: "contactName", width: 40 },
   { type: "string", field: "contactTelephone", width: 15 },
-  { type: "string", field: "contactEmail", width: 50 },
+  { type: "string", field: "contactEmail", casing: "preserve", width: 50 },
   { type: "blank", width: 91 },
   { type: "recordSequenceNumber", width: 8 },
   { type: "blank", width: 10 },
@@ -58,7 +89,13 @@ const ARecord = [
     width: 1,
   },
   { type: "blank", width: 5 },
-  { type: "string", field: "issuerTin", width: 9 },
+  { type: "string", field: "issuerTin", pad: "", width: 9 },
+  // {
+  //   type: "string",
+  //   field: "firstIssuerNameLine",
+  //   operation: "nameControlCorporation",
+  //   width: 4,
+  // },
   { type: "string", field: "issuerNameControl", width: 4 },
   { type: "bool", field: "lastFilingIndicator", trueValue: "1", width: 1 },
   { type: "string", field: "typeOfReturn", width: 2 },
@@ -66,7 +103,8 @@ const ARecord = [
   { type: "blank", width: 6 },
   { type: "bool", field: "foreignEntityIndicator", trueValue: "1", width: 1 },
   { type: "string", field: "firstIssuerNameLine", width: 40 },
-  { type: "string", field: "secondIssuerNameLine", width: 40 },
+  { type: "string", continuedFrom: "firstIssuerNameLine", width: 40 },
+  // { type: "string", field: "secondIssuerNameLine", width: 40 },
   {
     type: "bool",
     field: "transferAgentIndicator",
@@ -89,9 +127,15 @@ const BRecord = [
   { type: "const", value: "B" },
   { type: "string", field: "paymentYear", width: 4 },
   { type: "string", field: "correctedReturnIndicator", width: 1 },
+  // {
+  //   type: "string",
+  //   field: "payeeLastName",
+  //   operation: "nameControlIndividualByLastName",
+  //   width: 4,
+  // },
   { type: "string", field: "nameControl", width: 4 },
   { type: "string", field: "typeOfTin", width: 1 },
-  { type: "string", field: "payeeTin", width: 9 },
+  { type: "string", field: "payeeTin", pad: "", width: 9 },
   { type: "string", field: "payeeAccountNumber", width: 20 },
   { type: "string", field: "issuerOfficeCode", width: 4 },
   { type: "blank", width: 10 },
@@ -323,6 +367,7 @@ function generateFire(data, documentStructure) {
 
   function internalProcess(data, structure, aggregateRecord) {
     let forEachAggregateRecord;
+    let continuations = {};
     for (const item of structure) {
       if (item.type === "record") {
         recordSequenceNumber++;
@@ -355,14 +400,21 @@ function generateFire(data, documentStructure) {
       let align = item.align;
       let width = item.width;
       let isPresent = true;
+      let casing = item.casing ?? "upper";
+      let operation = item.operation ?? null;
       if (item.type === "const") {
         value = item.value;
         width ??= item.value.length;
       } else if (item.type === "blank") {
         value = "";
       } else if (item.type === "string") {
-        isPresent = data[item.field] !== undefined;
-        value = data[item.field] ?? "";
+        if (item.continuedFrom) {
+          isPresent = item.continuedFrom in continuations;
+          value = continuations[item.continuedFrom];
+        } else {
+          isPresent = data[item.field] !== undefined;
+          value = data[item.field] ?? "";
+        }
       } else if (item.type === "bool") {
         isPresent = data[item.field] !== undefined;
         value = data[item.field] ? item.trueValue ?? "" : item.falseValue ?? "";
@@ -412,12 +464,35 @@ function generateFire(data, documentStructure) {
       }
 
       if (value.length > width) {
-        console.warn("truncated entry: ", value);
         value = value.substring(0, width);
+      }
+
+      if (isPresent) continuations[item.field] = value.substring(width);
+
+      if (operation !== null) {
+        if (!(operation in OPERATION_MAP)) {
+          throw new Error('invalid operation: "' + operation + '"');
+        }
+        let operationFunc = OPERATION_MAP[operation];
+        value = operationFunc(value);
+      }
+
+      if (casing === "upper") {
+        value = value.toUpperCase();
+      } else if (casing === "preserve") {
+        // do nothing
+      } else {
+        throw new Error("invalid casing");
       }
 
       recordSize += value.length;
       output += value;
+    }
+
+    for (let [key, value] of Object.entries(continuations)) {
+      if (value.length > 0) {
+        console.warn("field truncated: " + key);
+      }
     }
   }
 
@@ -426,8 +501,7 @@ function generateFire(data, documentStructure) {
   return output;
 }
 
-
 module.exports = {
   generateFire,
   Document,
-}
+};

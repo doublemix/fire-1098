@@ -1,9 +1,9 @@
-const Papa = require('papaparse')
+const Papa = require("papaparse");
 
 function parseCsvWithHeader(contents) {
   const parseResults = Papa.parse(contents, { header: true });
 
-  return parseResults.data
+  return parseResults.data;
 }
 
 const FIRST_NAME = "Borrower First Name";
@@ -72,6 +72,7 @@ function convertToPayeesData(rawData) {
         )} ${getPayeeField(LAST_NAME, true)} ${getPayeeField(
           GENERATION_CODE
         )}`.replace(/  +/g, " "),
+        payeeLastName: getPayeeField(LAST_NAME, true),
         payeeMailingAddress: getPayeeField(MAILING_ADDRESS, true),
         payeeCity: getPayeeField(MAILING_CITY, true),
         payeeState: getPayeeField(MAILING_STATE, true),
@@ -83,5 +84,5 @@ function convertToPayeesData(rawData) {
 
 module.exports = {
   parseCsvWithHeader,
-  convertToPayeesData
+  convertToPayeesData,
 };
