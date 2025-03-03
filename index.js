@@ -1,10 +1,31 @@
+const { saveAs } = require("file-saver");
 const { generateFire, Document } = require("./form1098");
 const { parseCsvWithHeader, convertToPayeesData } = require("./utils");
 
 const dropZoneEl = document.getElementById("drop-zone");
 const submitButtonEl = document.getElementById("submit-button");
 const transmitterFileEl = document.getElementById("transmitter-file");
-const dataFileEl = document.getElementById("data-file")
+const dataFileEl = document.getElementById("data-file");
+/** @type HTMLSelectElement */
+const yearSelectEl = document.getElementById("year-select");
+
+function setupYearSelectEl() {
+  let currentYear = new Date().getFullYear();
+  let previousYear = currentYear - 1;
+  let minYearToGenerate = previousYear - 3;
+  let maxYearToGenerate = currentYear;
+
+  for (let year = minYearToGenerate; year <= maxYearToGenerate; year++) {
+    let option = document.createElement("option");
+    option.textContent = `${year}`;
+    option.value = `${year}`;
+
+    yearSelectEl.appendChild(option);
+  }
+
+  yearSelectEl.value = `${previousYear}`;
+}
+setupYearSelectEl();
 
 dropZoneEl.addEventListener("dragenter", (ev) => {
   dropZoneEl.classList.add("active");
@@ -60,23 +81,40 @@ dropZoneEl.addEventListener("drop", async (ev) => {
 
 function updateStuff() {
   if (csvFile != null) {
-    dataFileEl.classList.add("uploaded")
+    dataFileEl.classList.add("uploaded");
   }
   if (transmitterDataFile != null) {
-    transmitterFileEl.classList.add("uploaded")
+    transmitterFileEl.classList.add("uploaded");
   }
   const showSubmit = csvFile != null && transmitterDataFile != null;
   submitButtonEl.disabled = !showSubmit;
 }
-updateStuff()
+updateStuff();
 
-submitButtonEl.addEventListener("click", () => { tryProcess() })
+submitButtonEl.addEventListener("click", () => {
+  try {
+    tryProcess();
+  } catch (err) {
+    console.error(err);
+    throw err;
+  }
+});
 
 async function tryProcess() {
   if (!csvFile || !transmitterDataFile) return;
+  let paymentYear = yearSelectEl.value;
+  if (!paymentYear) {
+    throw new Error(`invalid payment year selected: ${paymentYear}`);
+  }
   const rawData = parseCsvWithHeader(csvFile);
-  const payees = convertToPayeesData(rawData);
+  const payees = convertToPayeesData(rawData, paymentYear);
   const transmitterData = JSON.parse(transmitterDataFile);
+
+  transmitterData.transmitter.paymentYear = paymentYear;
+  transmitterData.issuer.paymentYear = paymentYear;
+
+  // HACK
+  transmitterData.transmitter.totalNumberOfPayees = `${payees.length}`;
 
   const data = {
     transmitter: transmitterData.transmitter,
@@ -89,19 +127,29 @@ async function tryProcess() {
 
   const suggestedName = "fire.txt";
 
-  // Show the file save dialog.
-  let handle
+  try {
+    saveAs(blob, suggestedName);
+  } catch (err) {
+    console.error(err);
+    throw err;
+  }
+}
+
+/**
+ *   // Show the file save dialog.
+  let handle;
   try {
     handle = await showSaveFilePicker({
       suggestedName,
     });
   } catch (err) {
     // user may have aborted the request
-    return
+    console.error(err);
+    return;
   }
 
   // Write the blob to the file.
   const writable = await handle.createWritable();
   await writable.write(blob);
   await writable.close();
-}
+ */

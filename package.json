@@ -12,6 +12,7 @@
   "dependencies": {
     "csv-parse": "^5.5.5",
     "csv-string": "^4.1.1",
+    "file-saver": "^2.0.5",
     "papaparse": "^5.4.1"
   },
   "devDependencies": {

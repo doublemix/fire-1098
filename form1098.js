@@ -32,7 +32,12 @@ let OPERATION_MAP = {};
 const TRecord = [
   { type: "const", value: "T" },
   { type: "string", field: "paymentYear", width: 4 },
-  { type: "bool", field: "priorYearIndicator", trueValue: "P", width: 1 },
+  {
+    type: "bool",
+    field: "priorYearIndicator",
+    trueValue: "P",
+    width: 1,
+  },
   { type: "string", field: "transmitterTin", pad: "", width: 9 },
   { type: "string", field: "transmitterControlCode", width: 5 },
   { type: "blank", width: 7 },
@@ -53,6 +58,7 @@ const TRecord = [
     width: 8,
     pad: "0",
     align: "right",
+    required: true,
   },
   { type: "string", field: "contactName", width: 40 },
   { type: "string", field: "contactTelephone", width: 15 },
@@ -286,7 +292,12 @@ const BRecord = [
     width: 1,
   },
   { type: "string", field: "propertyAddress", width: 39 },
-  { type: "string", field: "other", width: 39 },
+  {
+    type: "string",
+    field: "other",
+    continuedFrom: "propertyAddress",
+    width: 39,
+  },
   { type: "blank", width: 39 },
   {
     type: "string",
@@ -365,6 +376,8 @@ function generateFire(data, documentStructure) {
   let output = "";
   let recordSequenceNumber = 0;
 
+  let errors = [];
+
   function internalProcess(data, structure, aggregateRecord) {
     let forEachAggregateRecord;
     let continuations = {};
@@ -402,13 +415,14 @@ function generateFire(data, documentStructure) {
       let isPresent = true;
       let casing = item.casing ?? "upper";
       let operation = item.operation ?? null;
+      let required = item.required ?? false;
       if (item.type === "const") {
         value = item.value;
         width ??= item.value.length;
       } else if (item.type === "blank") {
         value = "";
       } else if (item.type === "string") {
-        if (item.continuedFrom) {
+        if (data[item.field] !== undefined && item.continuedFrom) {
           isPresent = item.continuedFrom in continuations;
           value = continuations[item.continuedFrom];
         } else {
@@ -428,6 +442,9 @@ function generateFire(data, documentStructure) {
       } else {
         throw new Error("invalid type: " + item.type);
       }
+
+      if (!isPresent && required)
+        errors.push(new Error("missing required field: " + item.field));
 
       width ??= 0;
 
@@ -497,6 +514,11 @@ function generateFire(data, documentStructure) {
   }
 
   internalProcess(data, documentStructure);
+
+  if (errors.length > 0) {
+    console.error(errors.map((err) => err.message));
+    throw errors[0];
+  }
 
   return output;
 }

@@ -86,6 +86,13 @@
         background: #CCC;
         color: #666;
       }
+      #year-select {
+        padding: 15px;
+        border: 3px solid black;
+        width: 300px;
+        border-radius: 5px;
+        font-size: 20px;
+      }
     </style>
   </head>
   <body>
@@ -93,6 +100,8 @@
       <div class="active-indicator"></div>
       <div class="drop-zone-contents">
         <div>Drop a file</div>
+        <select id="year-select"></select>
+        </select>
         <div class="file-indicators">
           <div class="indicator" id="transmitter-file">Transmitter</div>
           <div class="indicator" id="data-file">Data</div>
